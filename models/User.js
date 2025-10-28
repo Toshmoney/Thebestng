@@ -16,6 +16,7 @@ const userSchema = new Schema(
     isOtpVerified: { type: Boolean, default: false },
     referralCode: { type: String, unique: true },
     referredBy: { type: Schema.Types.ObjectId, ref: "User" },
+    isEmailVerified: { type: Boolean, default: false },
   },
   {
     timestamps: true,

@@ -6,6 +6,8 @@ const walletModel = require("../models/Wallet");
 const transactionModel = require("../models/Transaction");
 const reviewModel = require("../models/Review");
 const { sendNotification } = require("../services/notificationService");
+const userModel = require("../models/User");
+const mailsender = require("../services/mailService");
 require("dotenv").config();
 
 const createTask = async (req, res) => {
@@ -87,6 +89,44 @@ const createTask = async (req, res) => {
       document: documentUrl,
       video: videoUrl,
     });
+
+    // const taskers = await userModel.find({
+    //   role: "tasker",
+    //   location: location,
+    //   skillset: { $in: newTask.mustHave },
+    // });
+
+    // for (const tasker of taskers) {
+    //   const emailBody = newTask.description;
+    //   await mailsender(tasker.email, `New task available in your area: ${newTask.title}`, emailBody);
+    // }    
+
+    // 🔹 Notify taskers in same area with matching skills
+    const taskers = await userModel.find({
+      role: "tasker",
+      location,
+      skillset: { $in: newTask.mustHave },
+    });
+
+    for (const tasker of taskers) {
+      const emailBody = `
+        Hello ${tasker.username || "Tasker"},
+        A new task is available near you!
+        
+        🧩 Task: ${newTask.title}
+        💰 Price: ${newTask.pricing}
+        📍 Location: ${newTask.location}
+        📅 Date: ${newTask.date.toDateString()}
+        Description: ${newTask.description}
+        click the link below to apply: https://thebestpriceng.com/single-task/${newTask._id}
+        
+      `;
+      await mailsender(
+        tasker.email,
+        `New task available in your area: ${newTask.title}`,
+        emailBody
+      );
+    }
 
     const savedTask = await newTask.save();
 

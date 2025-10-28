@@ -6,6 +6,7 @@ const walletModel = require("../models/Wallet");
 const generateOtp = require("../helpers/otpHelper");
 const generateReferralCode = require("../helpers/referralCode");
 const referralModel = require("../models/Referral");
+const crypto = require("crypto")
 require("dotenv").config();
 
 const register = async (req, res) => {
