@@ -8,6 +8,7 @@ app.use(express.json());
 const router = express.Router();
 
 router.route('/register').post(register);
+router.route("/verify-email/:token").get(verifyEmail);
 router.route('/login').post(login);
 router.route('/forgotPassword').post(forgotPassword);
 router.route('/verify-otp').post(verifyOtp);

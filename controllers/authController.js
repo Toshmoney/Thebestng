@@ -17,7 +17,8 @@ const register = async (req, res) => {
       return res.status(400).json({ error: "All fields are required!" });
     }
 
-    const existingUser = await userModel.findOne({ email });
+    const emailLower = email.toLowerCase();
+    const existingUser = await userModel.findOne({ email: emailLower });
 
     if (existingUser) {
       return res.status(409).json({ error: "User already exists" });
@@ -47,7 +48,7 @@ const register = async (req, res) => {
     const newUser = new userModel({
       role,
       username,
-      email,
+      email: emailLower,
       password: hashedPassword,
       referralCode: newReferralCode,
       referredBy: referrerUser ? referrerUser._id : null,
@@ -75,8 +76,21 @@ const register = async (req, res) => {
       });
     }
 
-    const emailBody = `Dear ${username}, you've successfully signed up`;
-    await mailsender(email, "SignUp successful", emailBody);
+    // send email to verify isEmailVerified in user model
+    const emailToken = jwt.sign(
+      { userId: newUser._id },
+      process.env.jwt_secret,
+      { expiresIn: "1d" }
+    );
+const verifyLink = `https://thebestng.onrender.com/api/v1/verify-email/${emailToken}`;
+
+    const emailBody = `
+      <h3>Hello ${username},</h3>
+      <p>Welcome to The Best Price NG! Please verify your email address by clicking the button below:</p>
+      <a href="${verifyLink}" target="_blank">Verify Email</a>
+      <p>If you didn’t create an account, you can ignore this email.</p>
+    `;
+    await mailsender(newUser.email, "Verify your email address", emailBody);
 
     res.status(201).json({ message: "Registered successfully", token });
   } catch (error) {
@@ -86,6 +100,37 @@ const register = async (req, res) => {
       .json({ error: "An error occurred during registration" });
   }
 };
+
+const verifyEmail = async (req, res) => {
+  const { token } = req.params;
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.jwt_secret);
+    const user = await userModel.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    // Mark user as verified
+    user.isEmailVerified = true;
+    await user.save();
+
+    res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(400).json({ error: "Verification link expired" });
+    }
+    console.error(error);
+    res.status(500).json({ error: "Invalid or expired token" });
+  }
+};
+
 
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -272,5 +317,6 @@ module.exports = {
   verifyOtp,
   resetPassword,
   changePassword,
-  switchRole
+  switchRole,
+  verifyEmail,
 };
